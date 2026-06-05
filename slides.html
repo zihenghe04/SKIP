@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKIP — Slides</title>
+<link rel="icon" href="./static/images/logo.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7B61FF; --accent-2:#00C6A7; --dense:#e53935;
+    --ink:#1f2733; --muted:#6b7280; --line:#e7e9ef;
+    --skip-bg:#f3efff; --good-bg:#ecfbf6;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:#0b0e13;
+    font-family:'Inter','Google Sans',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    color:var(--ink); overflow:hidden;
+    background-image:radial-gradient(1200px 600px at 50% -10%, #18203033, transparent);
+  }
+  /* ---- scaling stage: fixed 1280x720, scaled to fit ---- */
+  #viewport{position:fixed; inset:0; display:flex; align-items:center; justify-content:center;}
+  #deck{width:1280px; height:720px; position:relative; transform-origin:center center;
+        box-shadow:0 30px 90px rgba(0,0,0,.55); border-radius:14px; overflow:hidden; background:#fff;}
+
+  .slide{position:absolute; inset:0; background:#fff; padding:58px 76px 70px;
+         display:flex; flex-direction:column; opacity:0; visibility:hidden;
+         transition:opacity .42s ease; overflow:hidden;}
+  .slide.active{opacity:1; visibility:visible;}
+  /* content entrance */
+  .slide > *{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease;}
+  .slide.active > *{opacity:1; transform:none;}
+  .slide.active > :nth-child(1){transition-delay:.06s;}
+  .slide.active > :nth-child(2){transition-delay:.13s;}
+  .slide.active > :nth-child(3){transition-delay:.20s;}
+  .slide.active > :nth-child(4){transition-delay:.27s;}
+
+  .kicker{font-size:15px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+          color:var(--accent); display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .kicker::before{content:""; width:34px; height:3px; border-radius:2px;
+          background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+  .headline{font-size:44px; line-height:1.1; font-weight:800; color:#171c26; letter-spacing:-.01em;}
+  .headline .hl{background:linear-gradient(90deg,var(--accent),var(--accent-2));
+          -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{font-size:21px; color:var(--muted); margin-top:14px; line-height:1.5;}
+  .body{flex:1; min-height:0; margin-top:26px; display:flex; flex-direction:column; justify-content:center;}
+
+  /* title slide */
+  .title-slide{align-items:center; justify-content:center; text-align:center; padding-top:0;}
+  .title-slide > *{transform:translateY(18px);}
+  .title-logo{width:300px; height:auto; margin-bottom:6px;}
+  .title-h1{font-size:40px; font-weight:800; color:#171c26; letter-spacing:-.01em;}
+  .title-tag{font-size:22px; color:var(--muted); margin-top:8px;}
+  .authors{font-size:17px; color:#3b4250; margin-top:24px; line-height:1.6; max-width:980px;}
+  .authors b{color:#171c26;}
+  .affils{font-size:14.5px; color:var(--muted); margin-top:8px;}
+  .venue{margin-top:18px; font-size:14px; font-weight:600; color:var(--accent);
+         background:var(--skip-bg); padding:6px 16px; border-radius:999px; display:inline-block;}
+  .btns{margin-top:26px; display:flex; gap:12px; justify-content:center;}
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:999px;
+       background:#171c26; color:#fff; font-size:15px; font-weight:600; text-decoration:none;}
+  .btn.ghost{background:#fff; color:#171c26; border:1.5px solid #d7dae3;}
+
+  /* bullets */
+  ul.points{list-style:none; display:flex; flex-direction:column; gap:18px;}
+  ul.points li{position:relative; padding-left:34px; font-size:22px; line-height:1.45; color:#2b3340;}
+  ul.points li::before{content:""; position:absolute; left:0; top:9px; width:14px; height:14px; border-radius:4px;
+       background:linear-gradient(135deg,var(--accent),var(--accent-2));}
+  ul.points li b{color:#171c26;}
+  .two{display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; height:100%;}
+  .two img{width:100%; height:auto; max-height:430px; object-fit:contain; border-radius:10px;}
+
+  /* stage cards */
+  .cards3{display:grid; grid-template-columns:repeat(3,1fr); gap:22px; height:100%; align-items:stretch;}
+  .scard{background:#fbfbfe; border:1px solid var(--line); border-radius:16px; padding:26px 24px;
+         display:flex; flex-direction:column;}
+  .stag{align-self:flex-start; font-size:13px; font-weight:700; color:#fff; padding:4px 12px; border-radius:999px; letter-spacing:.03em;}
+  .scard h3{font-size:23px; margin:14px 0 10px; color:#171c26;}
+  .scard p{font-size:16.5px; line-height:1.5; color:var(--muted);}
+
+  /* stat numbers */
+  .stats4{display:grid; grid-template-columns:repeat(4,1fr); gap:24px; height:100%; align-items:center;}
+  .stat{background:#fff; border:1px solid var(--line); border-radius:18px; padding:30px 18px; text-align:center;
+        box-shadow:0 10px 30px rgba(20,24,40,.05);}
+  .stat .n{font-size:58px; font-weight:800; letter-spacing:-.02em;
+        background:linear-gradient(120deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .stat .l{font-size:16px; color:var(--muted); margin-top:8px; line-height:1.35;}
+
+  /* tables */
+  table.t{width:100%; border-collapse:collapse; font-size:18px;}
+  table.t th, table.t td{padding:11px 14px; text-align:center; border-bottom:1px solid var(--line);}
+  table.t th{font-size:14.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:700;}
+  table.t td:first-child, table.t th:first-child{text-align:left;}
+  table.t tr.skip{background:var(--skip-bg);}
+  table.t tr.skip td{font-weight:700; color:#3a2b86;}
+  table.t tr.good td{background:var(--good-bg);}
+  table.t tr.bad td{color:#b6371f;}
+  table.t .best{color:var(--accent); font-weight:800;}
+  .note{font-size:15px; color:var(--muted); margin-top:16px;}
+
+  /* video rows */
+  .vrow{display:grid; gap:18px; height:100%; align-items:center; min-height:0;}
+  .vrow.three{grid-template-columns:repeat(3,1fr);}
+  .vrow.four{grid-template-columns:repeat(2,1fr); grid-template-rows:196px 196px; gap:16px; height:auto; align-content:center; align-items:stretch;}
+  .vrow.six{grid-template-columns:repeat(3,200px); gap:12px 16px; height:auto; align-content:center; justify-content:center;}
+  .vcard{position:relative; border-radius:12px; overflow:hidden; background:#000; line-height:0;
+         box-shadow:0 8px 24px rgba(0,0,0,.16); min-height:0; min-width:0;}
+  .vrow.four .vcard{height:100%;}
+  .vrow.six .vcard{width:200px; height:200px;}
+  .vcard video{width:100%; height:100%; display:block; object-fit:cover;}
+  .vcard .tag{position:absolute; top:9px; left:9px; z-index:2; font-size:13px; font-weight:700; color:#fff;
+        padding:3px 10px; border-radius:999px; line-height:1.4;}
+  .vsub{font-size:14px; color:var(--muted); text-align:center; margin-top:7px; line-height:0; }
+  .vwrap{display:flex; flex-direction:column;}
+  .vwrap .vsub{line-height:1.3; margin-top:8px;}
+  .b-gt{background:rgba(44,62,80,.9);} .b-skip{background:rgba(123,97,255,.95);}
+  .b-dense{background:rgba(229,57,53,.9);} .b-real{background:rgba(0,198,167,.95);}
+  .b-base{background:rgba(105,168,178,.95);}
+
+  /* chrome */
+  #bar{position:absolute; top:0; left:0; height:4px; width:0;
+       background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .35s ease; z-index:10;}
+  .foot{position:absolute; left:76px; right:76px; bottom:24px; display:flex; align-items:center;
+        justify-content:space-between; font-size:13.5px; color:#aab; z-index:5;}
+  .foot .brand{display:flex; align-items:center; gap:9px; color:var(--muted); font-weight:600;}
+  .foot .brand img{height:18px; width:auto;}
+  .nav{display:flex; align-items:center; gap:14px; color:var(--muted); font-weight:600;}
+  .nav button{border:1px solid #d7dae3; background:#fff; color:#3b4250; width:30px; height:30px;
+        border-radius:8px; cursor:pointer; font-size:15px; line-height:1; transition:.15s;}
+  .nav button:hover{border-color:var(--accent); color:var(--accent);}
+  .counter{min-width:56px; text-align:center;}
+
+  #fsbtn{position:fixed; top:16px; right:18px; z-index:20; background:#ffffff14; color:#cdd3df;
+        border:1px solid #ffffff22; border-radius:8px; padding:7px 11px; font-size:13px; cursor:pointer;}
+  #hint{position:fixed; bottom:14px; left:0; right:0; text-align:center; color:#5b6472; font-size:12.5px; z-index:20;}
+  @media (max-width:700px){ #hint{display:none;} }
+</style>
+</head>
+<body>
+<button id="fsbtn">⛶ Fullscreen</button>
+<div id="viewport">
+  <div id="deck">
+    <div id="bar"></div>
+
+    <!-- 1 — Title -->
+    <section class="slide title-slide">
+      <img class="title-logo" src="./static/images/logo.png" alt="SKIP">
+      <div class="title-h1">Sparse Keyframe Interpolation Paradigm</div>
+      <div class="title-tag">Event-Preserving Sparse-to-Dense Generation for Embodied World Models</div>
+      <div class="authors"><b>Ziheng He</b>, Yixiang Chen, Ning Yang, Zhanqian Wu, Qisen Ma, Yuan Xu, Jiabing Yang,
+        Peiyan Li, Xiangnan Wu, Xiaofeng Wang, Zheng Zhu, Jing Liu, Nianfeng Liu, Yan Huang</div>
+      <div class="affils">UCAS &middot; CASIA &middot; NJU &middot; GigaAI &middot; THU &middot; FiveAges</div>
+      <div class="venue">arXiv:2606.00664 &nbsp;·&nbsp; cs.RO</div>
+      <div class="btns">
+        <a class="btn" href="https://arxiv.org/abs/2606.00664" target="_blank">arXiv</a>
+        <a class="btn ghost" href="./home_page.html">Full page ↗</a>
+        <a class="btn ghost" href="./slides_zh.html">中文</a>
+      </div>
+    </section>
+
+    <!-- 2 — Problem -->
+    <section class="slide">
+      <div class="kicker">The Problem</div>
+      <h2 class="headline">Dense video world models are <span class="hl">expensive</span></h2>
+      <div class="body">
+        <div class="two">
+          <ul class="points">
+            <li>Embodied world models predict how actions change the scene — but rollouts are generated <b>frame by frame</b> in pixel space.</li>
+            <li>Long-horizon manipulation videos make this <b>redundant and slow</b>; neighboring frames barely change.</li>
+            <li>You can't just <b>drop frames</b>: policies depend on sparse task-relevant events — <b>approach, contact, grasp, release</b>.</li>
+          </ul>
+          <img src="./static/images/Fig1.png" alt="overview">
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 — Idea -->
+    <section class="slide">
+      <div class="kicker">Our Idea</div>
+      <h2 class="headline">Generate only the <span class="hl">keyframes</span>, then interpolate</h2>
+      <div class="body">
+        <div class="cards3">
+          <div class="scard">
+            <span class="stag" style="background:#7B61FF;">Stage 1</span>
+            <h3>SKIP-Selector</h3>
+            <p>Event-preserving keyframe selection via multimodal fusion of visual flow, semantic change (DINOv3) and proprioception — with explicit gripper-event protection.</p>
+          </div>
+          <div class="scard">
+            <span class="stag" style="background:#9B7BFF;">Stage 2</span>
+            <h3>SKIP-Generator</h3>
+            <p>A sparse video diffusion model (Wan&nbsp;2.2-TI2V-5B, fine-tuned) synthesizes <em>only</em> the selected keyframes from an initial frame + language prompt.</p>
+          </div>
+          <div class="scard">
+            <span class="stag" style="background:#00C6A7;">Stage 3</span>
+            <h3>SKIP-Reconstructor</h3>
+            <p>A learned gap predictor sets per-segment frame counts; an action-conditioned interpolator recovers the missing intervals from robot actions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 — Method figure -->
+    <section class="slide">
+      <div class="kicker">Method</div>
+      <h2 class="headline">SKIP architecture</h2>
+      <div class="body" style="margin-top:14px;">
+        <img src="./static/images/method.png" alt="architecture" style="width:100%; height:100%; object-fit:contain;">
+      </div>
+    </section>
+
+    <!-- 5 — Key numbers -->
+    <section class="slide">
+      <div class="kicker">Results at a glance</div>
+      <h2 class="headline">Faster, sharper, and <span class="hl">policy-ready</span></h2>
+      <div class="body">
+        <div class="stats4">
+          <div class="stat"><div class="n">4.16×</div><div class="l">faster than dense generation</div></div>
+          <div class="stat"><div class="n">89.0%</div><div class="l">aggregate FVD reduction</div></div>
+          <div class="stat"><div class="n">+56.9 pp</div><div class="l">π₀.₅ LIBERO SR vs. dense gen.</div></div>
+          <div class="stat"><div class="n">+41.7 pp</div><div class="l">real-robot SR vs. dense gen.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 — Video quality -->
+    <section class="slide">
+      <div class="kicker">Visual fidelity</div>
+      <h2 class="headline">End-to-end video quality on LIBERO</h2>
+      <div class="body" style="justify-content:flex-start;">
+        <table class="t">
+          <thead><tr><th>Method</th><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th><th>FVD ↓</th></tr></thead>
+          <tbody>
+            <tr><td>Wan 2.2 (chunked, dense baseline)</td><td>21.423</td><td>0.832</td><td>0.162</td><td>4177</td></tr>
+            <tr><td>Uniform + SKIP Gen./Recon.</td><td>21.345</td><td>0.847</td><td>0.130</td><td>716</td></tr>
+            <tr><td>RDP + SKIP Gen./Recon.</td><td>21.076</td><td>0.843</td><td>0.137</td><td>724</td></tr>
+            <tr><td>TriPSS + SKIP Gen./Recon.</td><td>21.033</td><td>0.827</td><td>0.157</td><td>640</td></tr>
+            <tr class="skip"><td>SKIP (ours)</td><td class="best">21.635</td><td class="best">0.856</td><td class="best">0.119</td><td class="best">458</td></tr>
+          </tbody>
+        </table>
+        <div class="note">Averaged across four LIBERO suites. SKIP cuts aggregate FVD from <b>4177 → 458</b> (−89.0%) over the dense baseline.</div>
+      </div>
+    </section>
+
+    <!-- 7 — Efficiency -->
+    <section class="slide">
+      <div class="kicker">Efficiency</div>
+      <h2 class="headline"><span class="hl">4.16×</span> faster than dense generation</h2>
+      <div class="body" style="justify-content:flex-start;">
+        <table class="t">
+          <thead><tr><th>Suite</th><th>SKIP total (s/traj) ↓</th><th>Wan 2.2 dense (s) ↓</th><th>Speedup ↑</th></tr></thead>
+          <tbody>
+            <tr><td>LIBERO-10</td><td>39.79</td><td>243.86</td><td class="best">6.13×</td></tr>
+            <tr><td>LIBERO-Goal</td><td>37.73</td><td>144.66</td><td>3.83×</td></tr>
+            <tr><td>LIBERO-Object</td><td>37.75</td><td>137.92</td><td>3.65×</td></tr>
+            <tr><td>LIBERO-Spatial</td><td>36.64</td><td>124.74</td><td>3.40×</td></tr>
+            <tr class="skip"><td>Weighted average</td><td>37.86</td><td>157.37</td><td class="best">4.16×</td></tr>
+          </tbody>
+        </table>
+        <div class="note">Per trajectory on one NVIDIA H20, 50 denoising steps, bf16.</div>
+      </div>
+    </section>
+
+    <!-- 8 — Policy training (headline) -->
+    <section class="slide">
+      <div class="kicker">The key result</div>
+      <h2 class="headline">SKIP videos can <span class="hl">replace real demonstrations</span></h2>
+      <div class="body" style="justify-content:flex-start;">
+        <table class="t">
+          <thead><tr><th>π₀.₅ training data</th><th>LIBERO-10</th><th>Goal</th><th>Object</th><th>Spatial</th><th>Avg.</th></tr></thead>
+          <tbody>
+            <tr class="good"><td>Real demos (all-real reference)</td><td>90.1</td><td>96.5</td><td>96.3</td><td>97.9</td><td>95.2</td></tr>
+            <tr class="skip"><td>SKIP-Mix70 (30% real + 70% SKIP)</td><td>89.6</td><td>96.6</td><td>96.0</td><td>97.5</td><td>94.9</td></tr>
+            <tr class="skip"><td>SKIP-Mix100 (100% SKIP)</td><td>88.8</td><td>96.0</td><td>94.2</td><td>96.4</td><td>93.9</td></tr>
+            <tr class="bad"><td>Dense-Mix70 (30% real + 70% dense)</td><td>68.5</td><td>67.7</td><td>60.6</td><td>59.4</td><td>64.1</td></tr>
+            <tr class="bad"><td>Dense-Mix100 (100% dense)</td><td>35.5</td><td>38.6</td><td>37.2</td><td>36.6</td><td>37.0</td></tr>
+          </tbody>
+        </table>
+        <div class="note">SKIP-Mix70 matches all-real training within <b>0.3 pp</b>; dense generation <b>collapses by 30–58 pp</b>.</div>
+      </div>
+    </section>
+
+    <!-- 9 — Qualitative videos: all-baseline overview -->
+    <section class="slide">
+      <div class="kicker">Qualitative · LIBERO-10 (soup + cream cheese, long-horizon)</div>
+      <h2 class="headline">SKIP vs. <span class="hl">every baseline</span></h2>
+      <div class="body">
+        <div class="vrow six">
+          <div class="vwrap"><div class="vcard"><span class="tag b-gt">Ground Truth</span>
+            <video src="./static/videos/l10_gt.mp4" loop muted playsinline preload="none"></video></div></div>
+          <div class="vwrap"><div class="vcard"><span class="tag b-skip">SKIP (ours)</span>
+            <video src="./static/videos/l10_skip.mp4" loop muted playsinline preload="none"></video></div></div>
+          <div class="vwrap"><div class="vcard"><span class="tag b-dense">Dense</span>
+            <video src="./static/videos/l10_dense.mp4" loop muted playsinline preload="none"></video></div></div>
+          <div class="vwrap"><div class="vcard"><span class="tag b-base">Uniform</span>
+            <video src="./static/videos/l10_uniform.mp4" loop muted playsinline preload="none"></video></div></div>
+          <div class="vwrap"><div class="vcard"><span class="tag b-base">RDP</span>
+            <video src="./static/videos/l10_rdp.mp4" loop muted playsinline preload="none"></video></div></div>
+          <div class="vwrap"><div class="vcard"><span class="tag b-base">TriPSS</span>
+            <video src="./static/videos/l10_tripss.mp4" loop muted playsinline preload="none"></video></div></div>
+        </div>
+        <div class="note" style="text-align:center; margin-top:16px;">Ground truth (GT) is the reference: SKIP tracks GT, while Dense and Uniform / RDP / TriPSS all miss task-relevant events (matching the FVD gaps on slide 6).</div>
+      </div>
+    </section>
+
+    <!-- 10 — Real robot videos -->
+    <section class="slide">
+      <div class="kicker">Real-robot deployment</div>
+      <h2 class="headline">Deployed on a real <span class="hl">Franka Panda</span></h2>
+      <div class="body">
+        <div class="vrow four">
+          <div class="vcard"><span class="tag b-real">T1 · two mugs → basket</span>
+            <video src="./static/videos/real_two_mugs.mp4" loop muted playsinline preload="none"></video></div>
+          <div class="vcard"><span class="tag b-real">T2 · bowl → drawer</span>
+            <video src="./static/videos/real_bowl_drawer.mp4" loop muted playsinline preload="none"></video></div>
+          <div class="vcard"><span class="tag b-real">T3 · white mug → plate</span>
+            <video src="./static/videos/real_mug_plate.mp4" loop muted playsinline preload="none"></video></div>
+          <div class="vcard"><span class="tag b-real">T4 · stack bowls</span>
+            <video src="./static/videos/real_stack_bowls.mp4" loop muted playsinline preload="none"></video></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 — Takeaways -->
+    <section class="slide">
+      <div class="kicker">Takeaways</div>
+      <h2 class="headline">Sparse keyframes are <span class="hl">enough</span></h2>
+      <div class="body">
+        <ul class="points">
+          <li>Generate <b>event-preserving keyframes</b>, then reconstruct the dense rollout with action-conditioned interpolation.</li>
+          <li><b>4.16× faster</b> than dense generation and <b>−89.0% FVD</b> on LIBERO.</li>
+          <li>SKIP videos <b>match all-real policy training</b> (−1.3 pp sim, −6.7 pp real); dense generation collapses by 48–58 pp.</li>
+        </ul>
+        <div class="btns" style="justify-content:flex-start; margin-top:34px;">
+          <a class="btn" href="https://arxiv.org/abs/2606.00664" target="_blank">arXiv:2606.00664</a>
+          <a class="btn ghost" href="./home_page.html">Full project page ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- chrome -->
+    <div class="foot">
+      <div class="brand"><img src="./static/images/logo.png" alt="SKIP"> &nbsp;·&nbsp; arXiv:2606.00664</div>
+      <div class="nav">
+        <button id="prev" aria-label="Previous">‹</button>
+        <span class="counter" id="counter">1 / 11</span>
+        <button id="next" aria-label="Next">›</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="hint">← → / Space to navigate · F for fullscreen · click right/left half to move</div>
+
+<script>
+(function(){
+  var deck = document.getElementById('deck');
+  var slides = [].slice.call(document.querySelectorAll('.slide'));
+  var bar = document.getElementById('bar');
+  var counter = document.getElementById('counter');
+  var idx = 0;
+
+  function fit(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    deck.style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  function show(i){
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function(s, k){
+      var on = k === idx;
+      s.classList.toggle('active', on);
+      [].forEach.call(s.querySelectorAll('video'), function(v){
+        if(on){ v.play().catch(function(){}); } else { v.pause(); }
+      });
+    });
+    bar.style.width = (idx / (slides.length - 1) * 100) + '%';
+    counter.textContent = (idx + 1) + ' / ' + slides.length;
+    if (history.replaceState) history.replaceState(null, '', '#' + (idx + 1));
+    else location.hash = '#' + (idx + 1);
+  }
+  function next(){ show(idx + 1); }
+  function prev(){ show(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    if(['ArrowRight',' ','PageDown'].indexOf(e.key) > -1){ e.preventDefault(); next(); }
+    else if(['ArrowLeft','PageUp'].indexOf(e.key) > -1){ e.preventDefault(); prev(); }
+    else if(e.key === 'Home'){ show(0); }
+    else if(e.key === 'End'){ show(slides.length - 1); }
+    else if(e.key === 'f' || e.key === 'F'){ toggleFS(); }
+  });
+
+  // click halves to navigate (ignore links/buttons)
+  document.getElementById('viewport').addEventListener('click', function(e){
+    if(e.target.closest('a, button, video')) return;
+    if(e.clientX < window.innerWidth * 0.32) prev(); else next();
+  });
+  document.getElementById('next').addEventListener('click', function(e){ e.stopPropagation(); next(); });
+  document.getElementById('prev').addEventListener('click', function(e){ e.stopPropagation(); prev(); });
+
+  function toggleFS(){
+    if(!document.fullscreenElement){ (document.documentElement.requestFullscreen||function(){})(); }
+    else if(document.exitFullscreen){ document.exitFullscreen(); }
+  }
+  document.getElementById('fsbtn').addEventListener('click', toggleFS);
+
+  window.addEventListener('hashchange', function(){
+    var n = parseInt((location.hash || '#1').slice(1), 10);
+    if(!isNaN(n) && n - 1 !== idx) show(n - 1);
+  });
+  var start = parseInt((location.hash || '#1').slice(1), 10);
+  show(isNaN(start) ? 0 : start - 1);
+})();
+</script>
+</body>
+</html>

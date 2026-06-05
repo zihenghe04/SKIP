@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>SKIP: Sparse Keyframe Interpolation Paradigm</title>
+  <!-- enable scroll-reveal only when supported, so content is never hidden without JS -->
+  <script>if ('IntersectionObserver' in window) { document.documentElement.classList.add('reveal-on'); }</script>
+
+  <link rel="icon" href="./static/images/logo.svg" type="image/svg+xml">
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="stylesheet" href="./static/css/video-player.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+
+  <style>
+    .hero-logo {
+      max-width: 340px;
+      height: auto;
+      margin-bottom: 0.3em;
+    }
+    .author-list {
+      line-height: 1.7;
+      font-size: 1.05em;
+    }
+    .author-list a {
+      color: #2c3e50;
+      text-decoration: none;
+      border-bottom: 1px dotted #aab2bd;
+      transition: color 0.15s ease;
+    }
+    .author-list a:hover {
+      color: #7B61FF;
+      border-bottom-color: #7B61FF;
+    }
+    .author-list a.first-author {
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .author-list sup {
+      color: #7B61FF;
+      font-weight: 600;
+    }
+    .affil-list {
+      color: #5a6477;
+      margin-top: 0.4em;
+      font-size: 0.95em;
+    }
+    .affil-list a {
+      color: #5a6477;
+      text-decoration: none;
+      border-bottom: 1px dotted #c4cad3;
+      transition: color 0.15s ease;
+    }
+    .affil-list a:hover {
+      color: #7B61FF;
+      border-bottom-color: #7B61FF;
+    }
+    .placeholder-video {
+      background: linear-gradient(135deg, #f0f2f5 0%, #d9e1ec 100%);
+      border: 2px dashed #aab2bd;
+      color: #5a6477;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1em;
+      font-weight: 600;
+      min-height: 220px;
+      border-radius: 8px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.2em 1em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      text-align: center;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .stat-card .stat-number {
+      font-size: 2em;
+      font-weight: 700;
+      color: #7B61FF;
+    }
+    .stat-card .stat-label {
+      color: #5a6477;
+      margin-top: 0.3em;
+      font-size: 0.95em;
+    }
+    .table tr.skip-row { background: #f3efff; }
+    .table tr.skip-row td { font-weight: 600; }
+    .table tr.real-row td { background: #f0f0f0; font-style: italic; }
+    section.section { padding: 2rem 1.5rem; }
+    .fig-caption {
+      color: #5a6477;
+      margin-top: 0.6em;
+      font-size: 0.92em;
+    }
+
+    /* ---- scroll reveal (fade + rise as elements enter view) ---- */
+    .reveal-on .stat-card,
+    .reveal-on figure.image,
+    .reveal-on .box,
+    .reveal-on .table-container,
+    .reveal-on .demo-card,
+    .reveal-on .placeholder-video,
+    .reveal-on .demo-ep,
+    .reveal-on .hero.is-light .title {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1);
+      will-change: opacity, transform;
+    }
+    .reveal-on .is-visible { opacity: 1 !important; transform: none !important; }
+    /* gentle per-row stagger for grouped cards */
+    .reveal-on .columns .column:nth-child(2) .stat-card,
+    .reveal-on .columns .column:nth-child(2) .demo-card { transition-delay: .08s; }
+    .reveal-on .columns .column:nth-child(3) .stat-card,
+    .reveal-on .columns .column:nth-child(3) .demo-card { transition-delay: .16s; }
+    .reveal-on .columns .column:nth-child(4) .stat-card,
+    .reveal-on .columns .column:nth-child(4) .demo-card { transition-delay: .24s; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal-on .stat-card, .reveal-on figure.image, .reveal-on .box,
+      .reveal-on .table-container, .reveal-on .demo-card, .reveal-on .placeholder-video,
+      .reveal-on .demo-ep, .reveal-on .hero.is-light .title {
+        opacity: 1 !important; transform: none !important; transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================== HERO ================== -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+
+          <img class="hero-logo" src="./static/images/logo.png" alt="SKIP">
+
+          <h2 class="subtitle is-3" style="font-weight:600; color:#2c3e50; margin-top:0.15em;">
+            Sparse Keyframe Interpolation Paradigm
+          </h2>
+          <h3 class="subtitle is-5" style="color:#5a6477;">
+            Event-Preserving Sparse-to-Dense Generation for Embodied World Models
+          </h3>
+
+          <div class="author-list" style="margin-top:1.2em;">
+            <a class="first-author" href="#" title="TODO: 何子恒 personal page">Ziheng He</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 陈艺翔">Yixiang Chen</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 杨宁">Ning Yang</a><sup>1,3</sup>,
+            <a href="#" title="TODO: 吴展骞">Zhanqian Wu</a><sup>4</sup>,
+            <a href="#" title="TODO: 马祺森">Qisen Ma</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 徐源">Yuan Xu</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 杨佳冰">Jiabing Yang</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 李沛言">Peiyan Li</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 吴祥楠">Xiangnan Wu</a><sup>1,2</sup>,
+            <a href="#" title="TODO: 王啸峰">Xiaofeng Wang</a><sup>4,5</sup>,
+            <a href="#" title="TODO: 朱政">Zheng Zhu</a><sup>4,5</sup>,
+            <a href="#" title="TODO: 刘京">Jing Liu</a><sup>6</sup>,
+            <a href="#" title="TODO: 刘年丰">Nianfeng Liu</a><sup>6</sup>,
+            <a href="#" title="TODO: 黄岩 (corresponding)">Yan Huang</a><sup>1,2,6,*</sup>
+          </div>
+          <div class="affil-list">
+            <sup>1</sup><a href="#" title="TODO: UCAS official page">UCAS</a> &nbsp;
+            <sup>2</sup><a href="#" title="TODO: CASIA official page">CASIA</a> &nbsp;
+            <sup>3</sup><a href="#" title="TODO: NJU official page">NJU</a> &nbsp;
+            <sup>4</sup><a href="#" title="TODO: GigaAI official page">GigaAI</a> &nbsp;
+            <sup>5</sup><a href="#" title="TODO: THU official page">THU</a> &nbsp;
+            <sup>6</sup><a href="#" title="TODO: FiveAges official page">FiveAges</a>
+            &nbsp;&middot;&nbsp;
+            <a href="mailto:heziheng261@mails.ucas.ac.cn"><code>heziheng261@mails.ucas.ac.cn</code></a>
+          </div>
+
+          <!-- buttons -->
+          <div class="column has-text-centered" style="margin-top:1.5em;">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2606.00664" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="ai ai-arxiv"></i></span>
+                  <span>arXiv:2606.00664</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2606.00664" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper (PDF)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code (TODO)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-database"></i></span>
+                  <span>Data (TODO)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="./slides.html" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-images"></i></span>
+                  <span>Slides</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="./home_page_zh.html" class="external-link button is-normal is-rounded is-light">
+                  <span class="icon"><i class="fas fa-language"></i></span>
+                  <span>中文</span>
+                </a>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== TEASER (Fig 1) ================== -->
+<section class="section" style="padding-top:0;">
+  <div class="container is-max-desktop">
+    <figure class="image">
+      <img src="./static/images/Fig1.png" alt="SKIP overview">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 1.</b> Overview of <b>SKIP</b>. Our framework predicts event-preserving sparse keyframes from an initial observation and a language instruction, then recovers the dense rollout via learned gap prediction and action-conditioned interpolation.
+    </p>
+  </div>
+</section>
+
+<!-- ================== OVERVIEW / WALKTHROUGH VIDEO (placeholder) ================== -->
+<section class="section" style="padding-top:0;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <video src="./static/videos/overview.mp4" controls preload="metadata" playsinline
+               poster="./static/images/overview_poster.jpg"
+               style="width:100%; aspect-ratio:16/9; display:block; border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,0.14); background:#000;"></video>
+        <p class="has-text-centered fig-caption">
+          A short narrated walkthrough of SKIP.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== TL;DR ================== -->
+<section class="section" style="padding-top:1rem; padding-bottom:1rem;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <div class="box" style="background:#f7f5ff; border-left:6px solid #7B61FF;">
+          <h2 class="title is-4" style="color:#2c3e50; margin-bottom:0.5em;">TL;DR</h2>
+          <p class="content" style="margin-bottom:0;">
+            Long-horizon manipulation videos waste compute on redundant motion. <b>SKIP</b> decomposes video generation into three stages: <b>SKIP-Selector</b> picks event-preserving keyframes via multimodal fusion, <b>SKIP-Generator</b> diffuses only these sparse anchors, and <b>SKIP-Reconstructor</b> recovers the dense rollout with a gap predictor plus an action-conditioned interpolator. On LIBERO, SKIP runs <b>4.16&times;</b> faster than dense generation, cuts FVD by <b>89.0%</b>, and&mdash;remarkably&mdash;when its videos fully replace real demonstrations for &pi;<sub>0.5</sub> training, success drops only <b>1.3&nbsp;pp</b> in simulation and <b>6.7&nbsp;pp</b> on a four-task Franka robot, while dense generation collapses by <b>48&ndash;58&nbsp;pp</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== KEY NUMBERS ================== -->
+<section class="section" style="padding-top:1rem;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">4.16&times;</div><div class="stat-label">Speedup vs. dense generation</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">89.0%</div><div class="stat-label">FVD reduction</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">+56.9 pp</div><div class="stat-label">&pi;<sub>0.5</sub> LIBERO SR vs. dense generation</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">+41.7 pp</div><div class="stat-label">Real-robot SR vs. dense generation</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== ABSTRACT ================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Embodied world models have emerged as a promising paradigm in robotics by predicting how robot actions affect the surrounding scene. However, rollout inference remains computationally expensive in pixel space, as long-horizon manipulation videos typically have to be generated frame by frame. This cost cannot be easily reduced by indiscriminately dropping frames, since downstream policies rely on complete preservation of sparse task-relevant events such as <em>approach</em>, <em>contact</em>, <em>grasp</em>, and <em>release</em>.
+          </p>
+          <p>
+            To address this challenge, we propose the <b>Sparse Keyframe Interpolation Paradigm (SKIP)</b>, an event-preserving sparse-to-dense framework that avoids dense frame-by-frame generation. SKIP first identifies task-relevant keyframes by leveraging robot-aware multimodal features. It then synthesizes only these keyframes with a sparse video diffusion model. A learned gap predictor and an action-conditioned interpolator subsequently reconstruct the missing intervals according to the robot actions.
+          </p>
+          <p>
+            On LIBERO, SKIP generates dense rollouts <b>4.16&times;</b> faster than a dense baseline while improving visual fidelity and reducing aggregate FVD by <b>89.0%</b>. Importantly, SKIP-generated videos are effective policy-training data. Even when they fully replace real demonstrations, &pi;<sub>0.5</sub> success drops only <b>1.3&nbsp;pp</b> in LIBERO simulation and <b>6.7&nbsp;pp</b> on the real robot, whereas fully dense frame-by-frame generation collapses by <b>48 to 58&nbsp;pp</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== METHOD ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">Method</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <figure class="image">
+      <img src="./static/images/method.png" alt="SKIP architecture">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 2.</b> <b>SKIP architecture.</b> Three stages: <b>SKIP-Selector</b> performs event-preserving keyframe selection through multimodal fusion of visual flow, semantic change, and proprioceptive features, with explicit gripper-event protection. <b>SKIP-Generator</b> is a sparse video diffusion model (Wan&nbsp;2.2-TI2V-5B fine-tuned) that synthesizes only the selected keyframes from an initial frame and a language prompt. <b>SKIP-Reconstructor</b> uses a learned gap predictor and an action-conditioned interpolator to recursively recover the missing intervals from robot actions.
+    </p>
+
+    <div class="columns is-centered" style="margin-top:2em;">
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#7B61FF; color:white;">Stage 1</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Selector</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          Event-preserving keyframe selection via multimodal fusion of visual flow, semantic change (DINOv3), and proprioceptive features &mdash; with explicit gripper-event protection.
+        </p>
+      </div>
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#9B7BFF; color:white;">Stage 2</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Generator</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          A sparse video diffusion model (Wan&nbsp;2.2-TI2V-5B fine-tuned) synthesizes <em>only</em> the keyframes from an initial frame and a language prompt.
+        </p>
+      </div>
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#00C6A7; color:white;">Stage 3</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Reconstructor</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          A learned gap predictor sets the per-segment frame count; an action-conditioned interpolator recursively recovers the missing intervals from robot actions.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== RESULTS ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">Results</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <!-- Video quality table -->
+    <h2 class="title is-3 has-text-centered">End-to-end Video Quality on LIBERO</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>PSNR &uarr;</th>
+            <th>SSIM &uarr;</th>
+            <th>LPIPS &darr;</th>
+            <th>FVD &darr;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Wan&nbsp;2.2 (chunked, dense baseline)</td><td>21.423</td><td>0.832</td><td>0.162</td><td>4177</td></tr>
+          <tr><td>Uniform + SKIP-Generator/Reconstructor</td><td>21.345</td><td>0.847</td><td>0.130</td><td>716</td></tr>
+          <tr><td>RDP + SKIP-Generator/Reconstructor</td><td>21.076</td><td>0.843</td><td>0.137</td><td>724</td></tr>
+          <tr><td>TriPSS + SKIP-Generator/Reconstructor</td><td>21.033</td><td>0.827</td><td>0.157</td><td>640</td></tr>
+          <tr class="skip-row"><td><b>SKIP (ours)</b></td><td><b>21.635</b></td><td><b>0.856</b></td><td><b>0.119</b></td><td><b>458</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      Averaged across four LIBERO test suites. Best per column in bold. SKIP cuts aggregate FVD from 4177 to 458 (&minus;89.0%) over the dense baseline.
+    </p>
+
+    <!-- Efficiency table -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">End-to-end Inference Time on LIBERO</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th rowspan="2">Suite</th>
+            <th colspan="4" style="text-align:center;">SKIP (ours) seconds/traj</th>
+            <th rowspan="2">Wan&nbsp;2.2 chunked &darr;</th>
+            <th rowspan="2">Speedup &uarr;</th>
+          </tr>
+          <tr>
+            <th>Keyframe gen.</th>
+            <th>Gap pred.</th>
+            <th>Interp.</th>
+            <th><b>Total</b> &darr;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>LIBERO-10</td><td>34.78</td><td>0.23</td><td>4.78</td><td><b>39.79</b></td><td>243.86</td><td><b>6.13&times;</b></td></tr>
+          <tr><td>LIBERO-Goal</td><td>35.24</td><td>0.02</td><td>2.47</td><td><b>37.73</b></td><td>144.66</td><td><b>3.83&times;</b></td></tr>
+          <tr><td>LIBERO-Object</td><td>35.45</td><td>0.02</td><td>2.28</td><td><b>37.75</b></td><td>137.92</td><td><b>3.65&times;</b></td></tr>
+          <tr><td>LIBERO-Spatial</td><td>34.68</td><td>0.02</td><td>1.94</td><td><b>36.64</b></td><td>124.74</td><td><b>3.40&times;</b></td></tr>
+          <tr class="skip-row"><td><b>Weighted avg.</b></td><td>35.06</td><td>0.06</td><td>2.74</td><td><b>37.86</b></td><td>157.37</td><td><b>4.16&times;</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      Per trajectory on one NVIDIA H20, 50 denoising steps, bf16.
+    </p>
+
+    <!-- pi0.5 LIBERO -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">&pi;<sub>0.5</sub> Success Rate on LIBERO (%)</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>Training data</th>
+            <th>LIBERO-10</th>
+            <th>LIBERO-Goal</th>
+            <th>LIBERO-Object</th>
+            <th>LIBERO-Spatial</th>
+            <th>Avg.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="real-row"><td>Real demos (all-real reference)</td><td>90.1</td><td>96.5</td><td>96.3</td><td>97.9</td><td><b>95.2</b></td></tr>
+          <tr class="skip-row"><td><b>SKIP-Mix70 (30% real + 70% SKIP)</b></td><td><b>89.6</b></td><td><b>96.6</b></td><td><b>96.0</b></td><td><b>97.5</b></td><td><b>94.9</b></td></tr>
+          <tr><td>SKIP-Mix100 (100% SKIP)</td><td>88.8</td><td>96.0</td><td>94.2</td><td>96.4</td><td>93.9</td></tr>
+          <tr style="color:#888;"><td>Dense-Mix70 (30% real + 70% dense Wan)</td><td>68.5</td><td>67.7</td><td>60.6</td><td>59.4</td><td>64.1</td></tr>
+          <tr style="color:#888;"><td>Dense-Mix100 (100% dense Wan)</td><td>35.5</td><td>38.6</td><td>37.2</td><td>36.6</td><td>37.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      Each condition uses 1503 training trajectories. SKIP-Mix70 matches all-real training within 0.3&nbsp;pp on average; dense generation collapses by 30&ndash;58&nbsp;pp.
+    </p>
+
+    <!-- Real-robot per-task -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">&pi;<sub>0.5</sub> Success Rate on Real Robot</h2>
+    <figure class="image" style="max-width:1000px; margin:0 auto;">
+      <img src="./static/images/realrobot_sr_pertask.png" alt="Real-robot success rate">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 3.</b> &pi;<sub>0.5</sub> success rate across five training mixes. <b>Left:</b> screenshots of the four Franka Panda real-robot tasks T1&ndash;T4 with per-task success rate over 30 rollouts. <b>Right:</b> average success rate on LIBERO simulation and the Franka real robot.
+    </p>
+
+    <!-- Ablation -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Ablation: Each Component Matters</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th colspan="4" style="text-align:center;">Keyframe selection streams</th>
+            <th>Recovery</th>
+            <th colspan="2" style="text-align:center;">Avg. SR (%)</th>
+          </tr>
+          <tr>
+            <th>Visual</th>
+            <th>Semantic</th>
+            <th>Proprio.</th>
+            <th>Gripper</th>
+            <th>Action</th>
+            <th>Sim</th>
+            <th>Real</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>71.5</td><td>43.3</td></tr>
+          <tr><td>&mdash;</td><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>68.7</td><td>36.7</td></tr>
+          <tr><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>&mdash;</td><td>&check;</td><td>73.6</td><td>50.0</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>81.2</td><td>53.3</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&check;</td><td>&mdash;</td><td>&check;</td><td>91.4</td><td>66.7</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td>&mdash;</td><td>90.4</td><td>66.7</td></tr>
+          <tr class="skip-row"><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td><b>94.9</b></td><td><b>73.3</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      No single feature stream suffices; multimodal fusion plus gripper-event protection plus action conditioning is required for the best sim/real performance.
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== ANALYSIS FIGURES ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">Analysis</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <h2 class="title is-3 has-text-centered">Per-event-count Keyframe Quality</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_2_en.png" alt="Per-event-count keyframe quality">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 4.</b> Held-out LIBERO trajectories bucketed by gripper-event count (0&ndash;1, 2, 3, 4, 5+). SKIP-Selector's margin over Uniform, RDP, and TriPSS widens as manipulation complexity grows, with the largest gains on the 5+-event bucket.
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Event-Hit Visualization</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_5_en.png" alt="Event-hit visualization">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 5.</b> A LIBERO trajectory with four ground-truth gripper events. SKIP-Selector (bottom row) hits all four exactly, while Uniform, RDP, and TriPSS each miss multiple events.
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Keyframe Budget Saturation</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_6_en.png" alt="K_kf saturation">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 6.</b> Event coverage and downstream video quality saturate near $K_{kf}=41$. Higher budgets give smaller marginal gains while increasing inference cost.
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">OAS Tracks Downstream &pi;<sub>0.5</sub> Success Rate</h2>
+    <figure class="image" style="max-width:780px; margin:0 auto;">
+      <img src="./static/images/fig_oas_sr_corr.png" alt="OAS vs SR correlation">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 7.</b> The Operation-Aware Score (OAS) of keyframe quality strongly tracks downstream &pi;<sub>0.5</sub> success rate across selection ablations (circles) and cross-method points (triangles).
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== QUALITATIVE / DEMOS ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">Qualitative Results</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <h2 class="title is-3 has-text-centered">Qualitative Effect of Keyframe Placement</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_8_en.png" alt="Qualitative keyframe placement">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 8.</b> On a long two-object LIBERO trajectory, event-aware keyframes help preserve object-in-gripper states that uniform or geometry-only anchors can miss.
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Generated Dense Rollouts vs. Ground Truth</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_9_en.png" alt="Generated rollouts vs GT">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 9.</b> Sampled frames from SKIP's reconstructed rollouts (Gen) against ground-truth episodes (GT). Failures concentrate in compound multi-stage tasks where errors near phase switches accumulate.
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Real-Robot Tasks</h2>
+    <figure class="image" style="max-width:1000px; margin:0 auto;">
+      <img src="./static/images/realrobot_tasks.png" alt="Real-robot tasks">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>Figure 10.</b> The four Franka Panda real-robot tasks (T1&ndash;T4) used for downstream &pi;<sub>0.5</sub> evaluation.
+    </p>
+
+    <style>
+      .demo-card { position:relative; border-radius:12px; overflow:hidden; background:#000;
+                   box-shadow:0 4px 18px rgba(0,0,0,0.12); line-height:0; }
+      .demo-card video { display:block; width:100%; height:auto; }
+      .demo-badge { position:absolute; top:8px; left:8px; z-index:2; font-size:0.72rem; font-weight:700;
+                    letter-spacing:0.02em; color:#fff; padding:3px 9px; border-radius:999px; line-height:1.2; }
+      .badge-gt    { background:rgba(44,62,80,0.88); }
+      .badge-skip  { background:rgba(123,97,255,0.95); }
+      .badge-dense { background:rgba(229,57,53,0.90); }
+      .badge-base  { background:rgba(105,168,178,0.95); }
+      .badge-real  { background:rgba(0,198,167,0.95); }
+      .demo-sub { color:#5a6477; font-size:0.85rem; text-align:center; margin-top:0.45em; }
+    </style>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">Video Demos</h2>
+    <p class="has-text-centered" style="color:#5a6477; max-width:820px; margin:0 auto 1.6em;">
+      All clips loop automatically (LIBERO at 256&times;256, 16&nbsp;fps). We first show SKIP across
+      <b>all four LIBERO suites</b>, then zoom into single episodes to swap keyframe selectors and inspect
+      the sparse keyframes themselves. Every keyframe&#8209;based method shares the same generator and
+      action&#8209;conditioned interpolator; only the <b>keyframe selector</b> changes.
+    </p>
+
+    <!-- Block A: SKIP across all four LIBERO suites -->
+    <style>
+      .demo-ep { text-align:center; font-weight:600; color:#2c3e50; font-size:0.95rem; margin:1.2em 0 0.5em; }
+      .demo-ep span { font-weight:400; color:#8a93a3; }
+      .demo-trip .column { padding:0.45rem; }
+    </style>
+    <h3 class="title is-5 has-text-centered" style="margin-top:1.5em; margin-bottom:0.2em;">
+      SKIP vs. dense vs. ground truth &mdash; one episode per LIBERO suite
+    </h3>
+
+    <p class="demo-ep">LIBERO-10 <span>&middot; long-horizon &mdash; &ldquo;put both the alphabet soup and the cream cheese box in the basket&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/l10_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/l10_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">Dense</span><video src="./static/videos/l10_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Goal <span>&middot; &ldquo;put the bowl on the stove&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/libero_stove_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/libero_stove_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">Dense</span><video src="./static/videos/libero_stove_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Object <span>&middot; &ldquo;pick up the alphabet soup and place it in the basket&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/obj_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/obj_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">Dense</span><video src="./static/videos/obj_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Spatial <span>&middot; &ldquo;pick up the black bowl from table center and place it on the plate&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/spa_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/spa_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">Dense</span><video src="./static/videos/spa_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="has-text-centered fig-caption">
+      Across every suite, <b>SKIP</b> tracks the ground-truth episode while running <b>4.16&times;</b> faster than
+      the dense per-frame baseline and cutting aggregate FVD by <b>89.0%</b>.
+    </p>
+
+    <!-- Block B: keyframe selectors on one episode -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.8em;">
+      Same pipeline, different keyframe selector
+      <span style="font-weight:400; color:#8a93a3;">(LIBERO-10 &middot; soup + cream cheese, long-horizon)</span>
+    </h3>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-skip">SKIP (ours)</span>
+          <video src="./static/videos/l10_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">KTS-VSP fusion</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">Uniform</span>
+          <video src="./static/videos/l10_uniform.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">Equally spaced</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">RDP</span>
+          <video src="./static/videos/l10_rdp.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">Geometry-based</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">TriPSS</span>
+          <video src="./static/videos/l10_tripss.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">Saliency-based</p>
+      </div>
+    </div>
+    <p class="has-text-centered fig-caption">
+      Same generator and action-conditioned interpolator throughout &mdash; only the keyframe selector changes.
+      Uniform, RDP, and TriPSS miss task-relevant events, matching the FVD and &pi;<sub>0.5</sub> gaps in the tables above.
+    </p>
+
+    <!-- Row 3: what SKIP-Generator actually synthesizes -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.8em;">
+      What SKIP-Generator actually synthesizes
+      <span style="font-weight:400; color:#8a93a3;">(LIBERO-Goal &middot; stove)</span>
+    </h3>
+    <div class="columns is-centered">
+      <div class="column is-5">
+        <div class="demo-card">
+          <span class="demo-badge badge-skip">Sparse keyframes &middot; 41 frames</span>
+          <video src="./static/videos/libero_stove_skip_kf.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <p class="demo-sub">SKIP-Generator output (diffused anchors only)</p>
+      </div>
+      <div class="column is-5">
+        <div class="demo-card">
+          <span class="demo-badge badge-skip">Dense reconstruction</span>
+          <video src="./static/videos/libero_stove_skip.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <p class="demo-sub">After gap prediction + action-conditioned interpolation</p>
+      </div>
+    </div>
+    <p class="has-text-centered fig-caption">
+      The diffusion model synthesizes only the <b>41</b> event-preserving keyframes (left); SKIP-Reconstructor
+      expands them back into the full dense video (right).
+    </p>
+
+    <!-- Row 4: real-robot rollouts — two per task -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.4em;">
+      Real-robot rollouts &mdash; Franka Panda (T1&ndash;T4)
+    </h3>
+
+    <p class="demo-ep">T1 <span>&middot; &ldquo;put both the red and blue mug in the basket&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 1</span><video src="./static/videos/real_two_mugs.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 2</span><video src="./static/videos/real_two_mugs_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T2 <span>&middot; &ldquo;put the red bowl in the drawer and close it&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 1</span><video src="./static/videos/real_bowl_drawer.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 2</span><video src="./static/videos/real_bowl_drawer_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T3 <span>&middot; &ldquo;put the white mug on the plate&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 1</span><video src="./static/videos/real_mug_plate.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 2</span><video src="./static/videos/real_mug_plate_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T4 <span>&middot; &ldquo;stack the red bowl on the green bowl&rdquo;</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 1</span><video src="./static/videos/real_stack_bowls.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">Rollout 2</span><video src="./static/videos/real_stack_bowls_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="has-text-centered fig-caption">
+      &pi;<sub>0.5</sub> trained on SKIP-generated data, deployed on a Franka Panda &mdash; two successful rollouts per task.
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== BIBTEX ================== -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">BibTeX</h2>
+        <pre><code>@misc{he2026skipsparsekeyframeinterpolation,
+      title={SKIP: Sparse Keyframe Interpolation Paradigm for Efficient Embodied World Models},
+      author={Ziheng He and Yixiang Chen and Ning Yang and Zhanqian Wu and Qisen Ma and Yuan Xu and Jiabing Yang and Peiyan Li and Xiangnan Wu and Xiaofeng Wang and Zheng Zhu and Jing Liu and Nianfeng Liu and Yan Huang},
+      year={2026},
+      eprint={2606.00664},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2606.00664}
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== FOOTER ================== -->
+<footer class="footer" style="padding:1.5rem 1.5rem; background:#f5f6fa;">
+  <div class="container has-text-centered">
+    <p class="is-size-7" style="color:#5a6477;">
+      Webpage template adapted from <a href="https://nerfies.github.io/" target="_blank">Nerfies</a> / BridgeVLA.
+      &nbsp;&middot;&nbsp; SKIP project &copy; 2026.
+    </p>
+  </div>
+</footer>
+
+<!-- Scroll reveal: fade + rise content as it enters the viewport. -->
+<script>
+(function () {
+  if (!('IntersectionObserver' in window)) return; // modern-browser gate (matches head guard)
+  try {
+    var sel = '.stat-card, figure.image, .box, .table-container, .demo-card, .placeholder-video, .demo-ep, .hero.is-light .title';
+    var els = [].slice.call(document.querySelectorAll(sel));
+    // IO ignores 0-area (unloaded) elements, so it won't fire early while the layout is still collapsed.
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+    // Safety net: after all assets (incl. multi-MB figures) load, reveal anything at/above the viewport
+    // so a fast scroll past a not-yet-sized image can never leave it stuck hidden.
+    window.addEventListener('load', function () {
+      var vh = window.innerHeight;
+      els.forEach(function (el) {
+        if (el.classList.contains('is-visible')) return;
+        if (el.getBoundingClientRect().top < vh) { el.classList.add('is-visible'); io.unobserve(el); }
+      });
+    });
+  } catch (err) {
+    document.documentElement.classList.remove('reveal-on'); // fail open: never leave content hidden
+  }
+})();
+</script>
+
+<!-- Lazy-play: only on-screen demo clips play, so the page isn't loading/decoding ~20 videos at once. -->
+<script>
+(function () {
+  var vids = Array.prototype.slice.call(document.querySelectorAll('.demo-card video'));
+  vids.forEach(function (v) { v.removeAttribute('autoplay'); v.preload = 'none'; v.muted = true; v.loop = true; });
+  if (!('IntersectionObserver' in window)) { vids.forEach(function (v) { v.play().catch(function(){}); }); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.play().catch(function(){}); }
+      else { e.target.pause(); }
+    });
+  }, { rootMargin: '250px 0px', threshold: 0.1 });
+  vids.forEach(function (v) { io.observe(v); });
+})();
+</script>
+
+</body>
+</html>
