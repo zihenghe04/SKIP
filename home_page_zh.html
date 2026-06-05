@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>SKIP：稀疏关键帧插值范式</title>
+  <!-- enable scroll-reveal only when supported, so content is never hidden without JS -->
+  <script>if ('IntersectionObserver' in window) { document.documentElement.classList.add('reveal-on'); }</script>
+
+  <link rel="icon" href="./static/images/logo.svg" type="image/svg+xml">
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="stylesheet" href="./static/css/video-player.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+
+  <style>
+    body, button, input, select, textarea, .title, .subtitle {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue",
+        "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .hero-logo {
+      max-width: 340px;
+      height: auto;
+      margin-bottom: 0.3em;
+    }
+    .author-list {
+      line-height: 1.7;
+      font-size: 1.05em;
+    }
+    .author-list a {
+      color: #2c3e50;
+      text-decoration: none;
+      border-bottom: 1px dotted #aab2bd;
+      transition: color 0.15s ease;
+    }
+    .author-list a:hover {
+      color: #7B61FF;
+      border-bottom-color: #7B61FF;
+    }
+    .author-list a.first-author {
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .author-list sup {
+      color: #7B61FF;
+      font-weight: 600;
+    }
+    .affil-list {
+      color: #5a6477;
+      margin-top: 0.4em;
+      font-size: 0.95em;
+    }
+    .affil-list a {
+      color: #5a6477;
+      text-decoration: none;
+      border-bottom: 1px dotted #c4cad3;
+      transition: color 0.15s ease;
+    }
+    .affil-list a:hover {
+      color: #7B61FF;
+      border-bottom-color: #7B61FF;
+    }
+    .placeholder-video {
+      background: linear-gradient(135deg, #f0f2f5 0%, #d9e1ec 100%);
+      border: 2px dashed #aab2bd;
+      color: #5a6477;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1em;
+      font-weight: 600;
+      min-height: 220px;
+      border-radius: 8px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.2em 1em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      text-align: center;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .stat-card .stat-number {
+      font-size: 2em;
+      font-weight: 700;
+      color: #7B61FF;
+    }
+    .stat-card .stat-label {
+      color: #5a6477;
+      margin-top: 0.3em;
+      font-size: 0.95em;
+    }
+    .table tr.skip-row { background: #f3efff; }
+    .table tr.skip-row td { font-weight: 600; }
+    .table tr.real-row td { background: #f0f0f0; font-style: italic; }
+    section.section { padding: 2rem 1.5rem; }
+    .fig-caption {
+      color: #5a6477;
+      margin-top: 0.6em;
+      font-size: 0.92em;
+    }
+
+    /* ---- scroll reveal (fade + rise as elements enter view) ---- */
+    .reveal-on .stat-card,
+    .reveal-on figure.image,
+    .reveal-on .box,
+    .reveal-on .table-container,
+    .reveal-on .demo-card,
+    .reveal-on .placeholder-video,
+    .reveal-on .demo-ep,
+    .reveal-on .hero.is-light .title {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1);
+      will-change: opacity, transform;
+    }
+    .reveal-on .is-visible { opacity: 1 !important; transform: none !important; }
+    /* gentle per-row stagger for grouped cards */
+    .reveal-on .columns .column:nth-child(2) .stat-card,
+    .reveal-on .columns .column:nth-child(2) .demo-card { transition-delay: .08s; }
+    .reveal-on .columns .column:nth-child(3) .stat-card,
+    .reveal-on .columns .column:nth-child(3) .demo-card { transition-delay: .16s; }
+    .reveal-on .columns .column:nth-child(4) .stat-card,
+    .reveal-on .columns .column:nth-child(4) .demo-card { transition-delay: .24s; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal-on .stat-card, .reveal-on figure.image, .reveal-on .box,
+      .reveal-on .table-container, .reveal-on .demo-card, .reveal-on .placeholder-video,
+      .reveal-on .demo-ep, .reveal-on .hero.is-light .title {
+        opacity: 1 !important; transform: none !important; transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================== HERO ================== -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+
+          <img class="hero-logo" src="./static/images/logo.png" alt="SKIP">
+
+          <h2 class="subtitle is-3" style="font-weight:600; color:#2c3e50; margin-top:0.15em;">
+            稀疏关键帧插值范式
+          </h2>
+          <h3 class="subtitle is-5" style="color:#5a6477;">
+            面向具身世界模型的事件保持稀疏到稠密生成
+          </h3>
+
+          <div class="author-list" style="margin-top:1.2em;">
+            <a class="first-author" href="#" title="TODO: 何子恒 personal page">何子恒</a><sup>1,2</sup>，
+            <a href="#">陈艺翔</a><sup>1,2</sup>，
+            <a href="#">杨宁</a><sup>1,3</sup>，
+            <a href="#">吴展骞</a><sup>4</sup>，
+            <a href="#">马祺森</a><sup>1,2</sup>，
+            <a href="#">徐源</a><sup>1,2</sup>，
+            <a href="#">杨佳冰</a><sup>1,2</sup>，
+            <a href="#">李沛言</a><sup>1,2</sup>，
+            <a href="#">吴祥楠</a><sup>1,2</sup>，
+            <a href="#">王啸峰</a><sup>4,5</sup>，
+            <a href="#">朱政</a><sup>4,5</sup>，
+            <a href="#">刘京</a><sup>6</sup>，
+            <a href="#">刘年丰</a><sup>6</sup>，
+            <a href="#" title="通讯作者">黄岩</a><sup>1,2,6,*</sup>
+          </div>
+          <div class="affil-list">
+            <sup>1</sup>中国科学院大学 &nbsp;
+            <sup>2</sup>中科院自动化所 &nbsp;
+            <sup>3</sup>南京大学 &nbsp;
+            <sup>4</sup>GigaAI &nbsp;
+            <sup>5</sup>清华大学 &nbsp;
+            <sup>6</sup>FiveAges
+            &nbsp;&middot;&nbsp;
+            <a href="mailto:heziheng261@mails.ucas.ac.cn"><code>heziheng261@mails.ucas.ac.cn</code></a>
+          </div>
+
+          <!-- buttons -->
+          <div class="column has-text-centered" style="margin-top:1.5em;">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2606.00664" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="ai ai-arxiv"></i></span>
+                  <span>arXiv:2606.00664</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2606.00664" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>论文 (PDF)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>代码 (待补)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-database"></i></span>
+                  <span>数据 (待补)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="./slides_zh.html" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-images"></i></span>
+                  <span>幻灯片</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="./home_page.html" class="external-link button is-normal is-rounded is-light">
+                  <span class="icon"><i class="fas fa-language"></i></span>
+                  <span>English</span>
+                </a>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== TEASER (Fig 1) ================== -->
+<section class="section" style="padding-top:0;">
+  <div class="container is-max-desktop">
+    <figure class="image">
+      <img src="./static/images/Fig1.png" alt="SKIP 总览">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 1.</b> <b>SKIP</b> 总览。框架从初始观测和语言指令出发，预测出事件保持的稀疏关键帧，再通过学习到的间隔预测与动作条件插值恢复出稠密视频。
+    </p>
+  </div>
+</section>
+
+<!-- ================== OVERVIEW / WALKTHROUGH VIDEO (placeholder) ================== -->
+<section class="section" style="padding-top:0;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <video src="./static/videos/overview.mp4" controls preload="metadata" playsinline
+               poster="./static/images/overview_poster.jpg"
+               style="width:100%; aspect-ratio:16/9; display:block; border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,0.14); background:#000;"></video>
+        <p class="has-text-centered fig-caption">
+          SKIP 的视频讲解。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== TL;DR ================== -->
+<section class="section" style="padding-top:1rem; padding-bottom:1rem;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <div class="box" style="background:#f7f5ff; border-left:6px solid #7B61FF;">
+          <h2 class="title is-4" style="color:#2c3e50; margin-bottom:0.5em;">速览</h2>
+          <p class="content" style="margin-bottom:0;">
+            长时程操作视频在冗余运动上浪费了大量算力。<b>SKIP</b> 将视频生成拆解为三个阶段：<b>SKIP-Selector</b> 通过多模态融合挑选事件保持的关键帧，<b>SKIP-Generator</b> 仅对这些稀疏锚点做扩散生成，<b>SKIP-Reconstructor</b> 再用间隔预测器加动作条件插值器恢复出稠密视频。在 LIBERO 上，SKIP 比稠密生成快 <b>4.16&times;</b>，将 FVD 降低 <b>89.0%</b>；尤为关键的是——当它生成的视频<b>完全替代</b>真实演示来训练 &pi;<sub>0.5</sub> 时，成功率在仿真中仅下降 <b>1.3&nbsp;pp</b>、在四任务 Franka 真机上仅下降 <b>6.7&nbsp;pp</b>，而稠密生成则崩溃 <b>48&ndash;58&nbsp;pp</b>。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== KEY NUMBERS ================== -->
+<section class="section" style="padding-top:1rem;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">4.16&times;</div><div class="stat-label">相比稠密生成的加速</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">89.0%</div><div class="stat-label">FVD 降低</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">+56.9 pp</div><div class="stat-label">&pi;<sub>0.5</sub> LIBERO 成功率（相比稠密生成）</div></div></div>
+      <div class="column is-3"><div class="stat-card"><div class="stat-number">+41.7 pp</div><div class="stat-label">真机成功率（相比稠密生成）</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== ABSTRACT ================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">摘要</h2>
+        <div class="content has-text-justified">
+          <p>
+            具身世界模型通过预测机器人动作如何影响周围场景，已成为机器人领域颇具前景的范式。然而，由于长时程操作视频通常必须逐帧生成，推演（rollout）推理在像素空间的成本依然高昂。这一成本难以通过无差别丢帧来降低，因为下游策略依赖于对稀疏的任务相关事件（如<em>接近</em>、<em>接触</em>、<em>抓取</em>与<em>释放</em>）的完整保留。
+          </p>
+          <p>
+            为应对这一挑战，我们提出<b>稀疏关键帧插值范式（SKIP）</b>——一种事件保持的稀疏到稠密框架，避免了稠密的逐帧生成。SKIP 首先利用机器人感知的多模态特征识别任务相关的关键帧，然后仅用稀疏视频扩散模型合成这些关键帧；随后，学习到的间隔预测器与动作条件插值器依据机器人动作重建出缺失的区间。
+          </p>
+          <p>
+            在 LIBERO 上，SKIP 生成稠密视频比稠密基线快 <b>4.16&times;</b>，同时提升视觉保真度并将总体 FVD 降低 <b>89.0%</b>。更重要的是，SKIP 生成的视频是有效的策略训练数据：即便完全替代真实演示，&pi;<sub>0.5</sub> 成功率在 LIBERO 仿真中仅下降 <b>1.3&nbsp;pp</b>、在真机上仅下降 <b>6.7&nbsp;pp</b>，而完全稠密的逐帧生成则崩溃 <b>48 至 58&nbsp;pp</b>。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== METHOD ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">方法</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <figure class="image">
+      <img src="./static/images/method.png" alt="SKIP 架构">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 2. SKIP 架构。</b>三个阶段：<b>SKIP-Selector</b> 通过对光流、语义变化和本体感知特征的多模态融合，进行事件保持的关键帧选择，并显式保护夹爪事件。<b>SKIP-Generator</b> 是一个稀疏视频扩散模型（微调的 Wan&nbsp;2.2-TI2V-5B），仅从初始帧和语言提示合成所选关键帧。<b>SKIP-Reconstructor</b> 使用学习到的间隔预测器与动作条件插值器，依据机器人动作递归恢复缺失区间。
+    </p>
+
+    <div class="columns is-centered" style="margin-top:2em;">
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#7B61FF; color:white;">阶段 1</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Selector</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          对光流、语义变化（DINOv3）和本体感知特征做多模态融合，进行事件保持的关键帧选择 &mdash; 并显式保护夹爪事件。
+        </p>
+      </div>
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#9B7BFF; color:white;">阶段 2</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Generator</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          稀疏视频扩散模型（微调的 Wan&nbsp;2.2-TI2V-5B）<em>仅</em>从初始帧和语言提示合成关键帧。
+        </p>
+      </div>
+      <div class="column is-4 has-text-centered">
+        <span class="tag is-medium" style="background:#00C6A7; color:white;">阶段 3</span>
+        <h3 class="title is-5" style="margin-top:0.6em;">SKIP-Reconstructor</h3>
+        <p class="is-size-6" style="color:#5a6477;">
+          学习到的间隔预测器确定每段的帧数；动作条件插值器依据机器人动作递归恢复缺失区间。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== RESULTS ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">实验结果</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <!-- Video quality table -->
+    <h2 class="title is-3 has-text-centered">LIBERO 上的端到端视频质量</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>方法</th>
+            <th>PSNR &uarr;</th>
+            <th>SSIM &uarr;</th>
+            <th>LPIPS &darr;</th>
+            <th>FVD &darr;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Wan&nbsp;2.2（分块，稠密基线）</td><td>21.423</td><td>0.832</td><td>0.162</td><td>4177</td></tr>
+          <tr><td>Uniform + SKIP 生成/重建</td><td>21.345</td><td>0.847</td><td>0.130</td><td>716</td></tr>
+          <tr><td>RDP + SKIP 生成/重建</td><td>21.076</td><td>0.843</td><td>0.137</td><td>724</td></tr>
+          <tr><td>TriPSS + SKIP 生成/重建</td><td>21.033</td><td>0.827</td><td>0.157</td><td>640</td></tr>
+          <tr class="skip-row"><td><b>SKIP（本文）</b></td><td><b>21.635</b></td><td><b>0.856</b></td><td><b>0.119</b></td><td><b>458</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      在四个 LIBERO 测试套件上平均。各列最优加粗。SKIP 将总体 FVD 从 4177 降到 458（相比稠密基线 &minus;89.0%）。
+    </p>
+
+    <!-- Efficiency table -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">LIBERO 上的端到端推理时间</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th rowspan="2">套件</th>
+            <th colspan="4" style="text-align:center;">SKIP（本文）秒/条</th>
+            <th rowspan="2">Wan&nbsp;2.2 分块 &darr;</th>
+            <th rowspan="2">加速 &uarr;</th>
+          </tr>
+          <tr>
+            <th>关键帧生成</th>
+            <th>间隔预测</th>
+            <th>插值</th>
+            <th><b>总计</b> &darr;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>LIBERO-10</td><td>34.78</td><td>0.23</td><td>4.78</td><td><b>39.79</b></td><td>243.86</td><td><b>6.13&times;</b></td></tr>
+          <tr><td>LIBERO-Goal</td><td>35.24</td><td>0.02</td><td>2.47</td><td><b>37.73</b></td><td>144.66</td><td><b>3.83&times;</b></td></tr>
+          <tr><td>LIBERO-Object</td><td>35.45</td><td>0.02</td><td>2.28</td><td><b>37.75</b></td><td>137.92</td><td><b>3.65&times;</b></td></tr>
+          <tr><td>LIBERO-Spatial</td><td>34.68</td><td>0.02</td><td>1.94</td><td><b>36.64</b></td><td>124.74</td><td><b>3.40&times;</b></td></tr>
+          <tr class="skip-row"><td><b>加权平均</b></td><td>35.06</td><td>0.06</td><td>2.74</td><td><b>37.86</b></td><td>157.37</td><td><b>4.16&times;</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      单条轨迹，单张 NVIDIA H20，50 步去噪，bf16。
+    </p>
+
+    <!-- pi0.5 LIBERO -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">&pi;<sub>0.5</sub> 在 LIBERO 上的成功率（%）</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>训练数据</th>
+            <th>LIBERO-10</th>
+            <th>LIBERO-Goal</th>
+            <th>LIBERO-Object</th>
+            <th>LIBERO-Spatial</th>
+            <th>平均</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="real-row"><td>真实演示（全真实参考）</td><td>90.1</td><td>96.5</td><td>96.3</td><td>97.9</td><td><b>95.2</b></td></tr>
+          <tr class="skip-row"><td><b>SKIP-Mix70（30% 真实 + 70% SKIP）</b></td><td><b>89.6</b></td><td><b>96.6</b></td><td><b>96.0</b></td><td><b>97.5</b></td><td><b>94.9</b></td></tr>
+          <tr><td>SKIP-Mix100（100% SKIP）</td><td>88.8</td><td>96.0</td><td>94.2</td><td>96.4</td><td>93.9</td></tr>
+          <tr style="color:#888;"><td>Dense-Mix70（30% 真实 + 70% 稠密 Wan）</td><td>68.5</td><td>67.7</td><td>60.6</td><td>59.4</td><td>64.1</td></tr>
+          <tr style="color:#888;"><td>Dense-Mix100（100% 稠密 Wan）</td><td>35.5</td><td>38.6</td><td>37.2</td><td>36.6</td><td>37.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      每种设置使用 1503 条训练轨迹。SKIP-Mix70 平均与全真实训练差距在 0.3&nbsp;pp 以内；稠密生成则崩溃 30&ndash;58&nbsp;pp。
+    </p>
+
+    <!-- Real-robot per-task -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">&pi;<sub>0.5</sub> 在真机上的成功率</h2>
+    <figure class="image" style="max-width:1000px; margin:0 auto;">
+      <img src="./static/images/realrobot_sr_pertask.png" alt="真机成功率">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 3.</b> 五种训练混合下的 &pi;<sub>0.5</sub> 成功率。<b>左：</b>四个 Franka Panda 真机任务 T1&ndash;T4 的截图，以及每个任务 30 次执行的成功率。<b>右：</b>在 LIBERO 仿真和 Franka 真机上的平均成功率。
+    </p>
+
+    <!-- Ablation -->
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">消融：每个组件都重要</h2>
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th colspan="4" style="text-align:center;">关键帧选择特征流</th>
+            <th>恢复</th>
+            <th colspan="2" style="text-align:center;">平均成功率（%）</th>
+          </tr>
+          <tr>
+            <th>视觉</th>
+            <th>语义</th>
+            <th>本体感知</th>
+            <th>夹爪</th>
+            <th>动作</th>
+            <th>仿真</th>
+            <th>真机</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>71.5</td><td>43.3</td></tr>
+          <tr><td>&mdash;</td><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>68.7</td><td>36.7</td></tr>
+          <tr><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>&mdash;</td><td>&check;</td><td>73.6</td><td>50.0</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&mdash;</td><td>&mdash;</td><td>&check;</td><td>81.2</td><td>53.3</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&check;</td><td>&mdash;</td><td>&check;</td><td>91.4</td><td>66.7</td></tr>
+          <tr><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td>&mdash;</td><td>90.4</td><td>66.7</td></tr>
+          <tr class="skip-row"><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td><td><b>94.9</b></td><td><b>73.3</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="is-size-7 has-text-centered" style="color:#5a6477;">
+      任何单一特征流都不够；要取得最佳的仿真/真机性能，需要多模态融合 + 夹爪事件保护 + 动作条件三者兼备。
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== ANALYSIS FIGURES ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">分析</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <h2 class="title is-3 has-text-centered">按事件数分桶的关键帧质量</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_2_en.png" alt="按事件数的关键帧质量">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 4.</b> 按夹爪事件数（0&ndash;1、2、3、4、5+）分桶的留出 LIBERO 轨迹。随着操作复杂度上升，SKIP-Selector 相对 Uniform、RDP、TriPSS 的优势不断扩大，在 5+ 事件桶上增益最大。
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">事件命中可视化</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_5_en.png" alt="事件命中可视化">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 5.</b> 一条含四个真值夹爪事件的 LIBERO 轨迹。SKIP-Selector（底行）精确命中全部四个，而 Uniform、RDP、TriPSS 各自漏掉多个事件。
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">关键帧预算饱和</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_6_en.png" alt="K_kf 饱和">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 6.</b> 事件覆盖率与下游视频质量在 $K_{kf}=41$ 附近饱和。更高的预算带来的边际增益更小，却会增加推理成本。
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">OAS 与下游 &pi;<sub>0.5</sub> 成功率高度相关</h2>
+    <figure class="image" style="max-width:780px; margin:0 auto;">
+      <img src="./static/images/fig_oas_sr_corr.png" alt="OAS 与成功率相关性">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 7.</b> 关键帧质量的操作感知分数（OAS）在选择消融（圆点）和跨方法对比（三角）上，都与下游 &pi;<sub>0.5</sub> 成功率高度吻合。
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== QUALITATIVE / DEMOS ================== -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1">定性结果</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <h2 class="title is-3 has-text-centered">关键帧位置的定性效果</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_8_en.png" alt="关键帧位置定性效果">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 8.</b> 在一条长的双物体 LIBERO 轨迹上，事件感知的关键帧有助于保留“物体被夹持”的状态，而均匀或纯几何的锚点可能会漏掉这些状态。
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">生成的稠密视频 vs. 真值</h2>
+    <figure class="image">
+      <img src="./static/images/fig_5_9_en.png" alt="生成视频与真值对比">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 9.</b> SKIP 重建视频（Gen）与真值序列（GT）的采样帧对比。失败集中在复合多阶段任务中，误差在阶段切换附近不断累积。
+    </p>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">真机任务</h2>
+    <figure class="image" style="max-width:1000px; margin:0 auto;">
+      <img src="./static/images/realrobot_tasks.png" alt="真机任务">
+    </figure>
+    <p class="has-text-centered fig-caption">
+      <b>图 10.</b> 用于下游 &pi;<sub>0.5</sub> 评测的四个 Franka Panda 真机任务（T1&ndash;T4）。
+    </p>
+
+    <style>
+      .demo-card { position:relative; border-radius:12px; overflow:hidden; background:#000;
+                   box-shadow:0 4px 18px rgba(0,0,0,0.12); line-height:0; }
+      .demo-card video { display:block; width:100%; height:auto; }
+      .demo-badge { position:absolute; top:8px; left:8px; z-index:2; font-size:0.72rem; font-weight:700;
+                    letter-spacing:0.02em; color:#fff; padding:3px 9px; border-radius:999px; line-height:1.2; }
+      .badge-gt    { background:rgba(44,62,80,0.88); }
+      .badge-skip  { background:rgba(123,97,255,0.95); }
+      .badge-dense { background:rgba(229,57,53,0.90); }
+      .badge-base  { background:rgba(105,168,178,0.95); }
+      .badge-real  { background:rgba(0,198,167,0.95); }
+      .demo-sub { color:#5a6477; font-size:0.85rem; text-align:center; margin-top:0.45em; }
+    </style>
+
+    <h2 class="title is-3 has-text-centered" style="margin-top:2em;">视频演示</h2>
+    <p class="has-text-centered" style="color:#5a6477; max-width:820px; margin:0 auto 1.6em;">
+      所有片段自动循环播放（LIBERO 为 256&times;256、16&nbsp;fps）。我们先展示 SKIP 在<b>全部四个 LIBERO 套件</b>上的表现，
+      再聚焦单个序列来切换关键帧选择器、并查看稀疏关键帧本身。所有基于关键帧的方法共享同一个生成器和动作条件插值器，
+      只有<b>关键帧选择器</b>不同。
+    </p>
+
+    <!-- Block A: SKIP across all four LIBERO suites -->
+    <style>
+      .demo-ep { text-align:center; font-weight:600; color:#2c3e50; font-size:0.95rem; margin:1.2em 0 0.5em; }
+      .demo-ep span { font-weight:400; color:#8a93a3; }
+      .demo-trip .column { padding:0.45rem; }
+    </style>
+    <h3 class="title is-5 has-text-centered" style="margin-top:1.5em; margin-bottom:0.2em;">
+      SKIP vs. 稠密 vs. 真值 &mdash; 每个 LIBERO 套件各取一条序列
+    </h3>
+
+    <p class="demo-ep">LIBERO-10 <span>&middot; 长时程 &mdash; “把字母汤和奶油奶酪盒都放进篮子里”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/l10_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/l10_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">稠密</span><video src="./static/videos/l10_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Goal <span>&middot; “把碗放到灶台上”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/libero_stove_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/libero_stove_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">稠密</span><video src="./static/videos/libero_stove_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Object <span>&middot; “拿起字母汤并放进篮子”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/obj_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/obj_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">稠密</span><video src="./static/videos/obj_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">LIBERO-Spatial <span>&middot; “从桌面中央拿起黑碗并放到盘子上”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-gt">GT</span><video src="./static/videos/spa_gt.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-skip">SKIP</span><video src="./static/videos/spa_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-4"><div class="demo-card"><span class="demo-badge badge-dense">稠密</span><video src="./static/videos/spa_dense.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="has-text-centered fig-caption">
+      在每个套件上，<b>SKIP</b> 都紧贴真值序列，同时比稠密逐帧基线快 <b>4.16&times;</b>，并将总体 FVD 降低 <b>89.0%</b>。
+    </p>
+
+    <!-- Block B: keyframe selectors on one episode -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.8em;">
+      同一流程，不同关键帧选择器
+      <span style="font-weight:400; color:#8a93a3;">（LIBERO-10 &middot; 汤 + 奶油奶酪，长时程）</span>
+    </h3>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-skip">SKIP（本文）</span>
+          <video src="./static/videos/l10_skip.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">KTS-VSP 融合</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">Uniform</span>
+          <video src="./static/videos/l10_uniform.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">等间隔</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">RDP</span>
+          <video src="./static/videos/l10_rdp.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">基于几何</p>
+      </div>
+      <div class="column is-3">
+        <div class="demo-card"><span class="demo-badge badge-base">TriPSS</span>
+          <video src="./static/videos/l10_tripss.mp4" autoplay loop muted playsinline preload="auto"></video></div>
+        <p class="demo-sub">基于显著性</p>
+      </div>
+    </div>
+    <p class="has-text-centered fig-caption">
+      自始至终使用同一个生成器和动作条件插值器，只有关键帧选择器不同。Uniform、RDP、TriPSS 会漏掉任务相关事件，
+      这与上方表格中的 FVD 和 &pi;<sub>0.5</sub> 差距一致。
+    </p>
+
+    <!-- Row 3: what SKIP-Generator actually synthesizes -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.8em;">
+      SKIP-Generator 实际合成了什么
+      <span style="font-weight:400; color:#8a93a3;">（LIBERO-Goal &middot; 灶台）</span>
+    </h3>
+    <div class="columns is-centered">
+      <div class="column is-5">
+        <div class="demo-card">
+          <span class="demo-badge badge-skip">稀疏关键帧 &middot; 41 帧</span>
+          <video src="./static/videos/libero_stove_skip_kf.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <p class="demo-sub">SKIP-Generator 输出（仅扩散锚点）</p>
+      </div>
+      <div class="column is-5">
+        <div class="demo-card">
+          <span class="demo-badge badge-skip">稠密重建</span>
+          <video src="./static/videos/libero_stove_skip.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <p class="demo-sub">经间隔预测 + 动作条件插值之后</p>
+      </div>
+    </div>
+    <p class="has-text-centered fig-caption">
+      扩散模型只合成 <b>41</b> 个事件保持的关键帧（左）；SKIP-Reconstructor 再将它们扩展回完整的稠密视频（右）。
+    </p>
+
+    <!-- Row 4: real-robot rollouts — 每任务 2 条 -->
+    <h3 class="title is-5 has-text-centered" style="margin-top:2em; margin-bottom:0.4em;">
+      真机执行 &mdash; Franka Panda（T1&ndash;T4）
+    </h3>
+
+    <p class="demo-ep">T1 <span>&middot; “把红、蓝两个杯子都放进篮子”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 1</span><video src="./static/videos/real_two_mugs.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 2</span><video src="./static/videos/real_two_mugs_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T2 <span>&middot; “把红碗放进抽屉并关上”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 1</span><video src="./static/videos/real_bowl_drawer.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 2</span><video src="./static/videos/real_bowl_drawer_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T3 <span>&middot; “把白杯放到盘子上”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 1</span><video src="./static/videos/real_mug_plate.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 2</span><video src="./static/videos/real_mug_plate_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="demo-ep">T4 <span>&middot; “把红碗叠到绿碗上”</span></p>
+    <div class="columns is-centered demo-trip">
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 1</span><video src="./static/videos/real_stack_bowls.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+      <div class="column is-6"><div class="demo-card"><span class="demo-badge badge-real">执行 2</span><video src="./static/videos/real_stack_bowls_2.mp4" autoplay loop muted playsinline preload="auto"></video></div></div>
+    </div>
+
+    <p class="has-text-centered fig-caption">
+      在 SKIP 生成数据上训练的 &pi;<sub>0.5</sub>，部署到 Franka Panda 上完成四个真实任务 &mdash; 每个任务展示两次成功执行。
+    </p>
+
+  </div>
+</section>
+
+<!-- ================== BIBTEX ================== -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">BibTeX</h2>
+        <pre><code>@misc{he2026skipsparsekeyframeinterpolation,
+      title={SKIP: Sparse Keyframe Interpolation Paradigm for Efficient Embodied World Models},
+      author={Ziheng He and Yixiang Chen and Ning Yang and Zhanqian Wu and Qisen Ma and Yuan Xu and Jiabing Yang and Peiyan Li and Xiangnan Wu and Xiaofeng Wang and Zheng Zhu and Jing Liu and Nianfeng Liu and Yan Huang},
+      year={2026},
+      eprint={2606.00664},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2606.00664}
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== FOOTER ================== -->
+<footer class="footer" style="padding:1.5rem 1.5rem; background:#f5f6fa;">
+  <div class="container has-text-centered">
+    <p class="is-size-7" style="color:#5a6477;">
+      网页模板改编自 <a href="https://nerfies.github.io/" target="_blank">Nerfies</a> / BridgeVLA。
+      &nbsp;&middot;&nbsp; SKIP 项目 &copy; 2026。
+    </p>
+  </div>
+</footer>
+
+<!-- Scroll reveal: fade + rise content as it enters the viewport. -->
+<script>
+(function () {
+  if (!('IntersectionObserver' in window)) return; // modern-browser gate (matches head guard)
+  try {
+    var sel = '.stat-card, figure.image, .box, .table-container, .demo-card, .placeholder-video, .demo-ep, .hero.is-light .title';
+    var els = [].slice.call(document.querySelectorAll(sel));
+    // IO ignores 0-area (unloaded) elements, so it won't fire early while the layout is still collapsed.
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+    // Safety net: after all assets (incl. multi-MB figures) load, reveal anything at/above the viewport
+    // so a fast scroll past a not-yet-sized image can never leave it stuck hidden.
+    window.addEventListener('load', function () {
+      var vh = window.innerHeight;
+      els.forEach(function (el) {
+        if (el.classList.contains('is-visible')) return;
+        if (el.getBoundingClientRect().top < vh) { el.classList.add('is-visible'); io.unobserve(el); }
+      });
+    });
+  } catch (err) {
+    document.documentElement.classList.remove('reveal-on'); // fail open: never leave content hidden
+  }
+})();
+</script>
+
+<!-- Lazy-play: only on-screen demo clips play, so the page isn't loading/decoding ~20 videos at once. -->
+<script>
+(function () {
+  var vids = Array.prototype.slice.call(document.querySelectorAll('.demo-card video'));
+  vids.forEach(function (v) { v.removeAttribute('autoplay'); v.preload = 'none'; v.muted = true; v.loop = true; });
+  if (!('IntersectionObserver' in window)) { vids.forEach(function (v) { v.play().catch(function(){}); }); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.play().catch(function(){}); }
+      else { e.target.pause(); }
+    });
+  }, { rootMargin: '250px 0px', threshold: 0.1 });
+  vids.forEach(function (v) { io.observe(v); });
+})();
+</script>
+
+</body>
+</html>

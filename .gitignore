@@ -1,0 +1,15 @@
+# OS junk
+.DS_Store
+**/.DS_Store
+
+# Unused source art — the site loads the .png versions of these
+static/images/Fig1.pdf
+static/images/Fig1.svg
+static/images/method.pdf
+static/images/Method.svg
+
+# Per-slide video exports — a separate deliverable, not part of the website
+slide_videos/
+
+# scratch
+**/_work/
