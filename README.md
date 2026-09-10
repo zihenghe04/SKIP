@@ -3,6 +3,7 @@
 Project page for **SKIP: Sparse Keyframe Interpolation Paradigm for Efficient Embodied World Models**.
 
 - 🌐 **Project page:** https://zihenghe04.github.io/SKIP/
+- 🎉 **Accepted at CoRL 2026 (2026-09-05)**
 - 📄 **arXiv:** https://arxiv.org/abs/2606.00664
 
 A static site (HTML/CSS/JS).
